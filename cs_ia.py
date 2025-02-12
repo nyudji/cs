@@ -6,11 +6,11 @@ import yt_dlp
 from ultralytics import YOLO
 
 # Configuração da API OpenAI
-openai.api_key = "SUA_CHAVE_OPENAIsk-proj-NrRzrFr8-W6rTY61VBVOAxMRGVqube2w8no1uXCyI6PaPgb-MCZNsU_Ggr6nl4w2h50Pgzk0DoT3BlbkFJDsVmUYA4b_vk2Y-vinhYG_xJW5OH2lZk8l2aN6pC1rmkYQAdKxKrPhybm3HvmWvk4lxxnZzGoA"
+openai.api_key = "API_KEY_OPENAI"
 
 def download_video(youtube_url, output_path="video.mp4"):
     ydl_opts = {
-        "format": "bestvideo+bestaudio",
+        "format": "mp4",
         "outtmpl": output_path,
     }
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -48,7 +48,7 @@ def generate_insights(stats):
     Sugira como o jogador pode melhorar.
     """
     response = openai.ChatCompletion.create(
-        model="gpt-4",
+        model="gpt-3.5-turbo",
         messages=[{"role": "system", "content": "Você é um coach de CS profissional."},
                   {"role": "user", "content": prompt}]
     )
@@ -57,11 +57,31 @@ def generate_insights(stats):
 # Interface no Streamlit
 st.title("CS Tactics AI - Analisador de Partidas")
 
+# Input do vídeo
 video_url = st.text_input("Cole o link do vídeo do YouTube")
+
 if st.button("Baixar e Analisar Vídeo"):
     if video_url:
-        video_path = download_video(video_url, "youtube_video.mp4")
-        stats = process_video(video_path)
+        with st.spinner('Baixando e processando o vídeo...'):
+            video_path = download_video(video_url, "youtube_video.mp4")
+            stats = process_video(video_path)
+            insights = generate_insights(stats)
+
+            st.write("### 📊 Estatísticas de Jogo")
+            st.json(stats)
+            
+            st.write("### 🎯 Sugestões de Melhorias")
+            st.write(insights)
+
+# Enviar vídeo próprio
+uploaded_file = st.file_uploader("Ou envie seu próprio vídeo de gameplay", type=["mp4", "avi", "mov"])
+
+if uploaded_file:
+    with open("temp_video.mp4", "wb") as f:
+        f.write(uploaded_file.getbuffer())
+    
+    with st.spinner('Processando seu vídeo...'):
+        stats = process_video("temp_video.mp4")
         insights = generate_insights(stats)
         
         st.write("### 📊 Estatísticas de Jogo")
@@ -69,18 +89,3 @@ if st.button("Baixar e Analisar Vídeo"):
         
         st.write("### 🎯 Sugestões de Melhorias")
         st.write(insights)
-
-uploaded_file = st.file_uploader("Ou envie seu próprio vídeo de gameplay", type=["mp4", "avi", "mov"])
-
-if uploaded_file:
-    with open("temp_video.mp4", "wb") as f:
-        f.write(uploaded_file.getbuffer())
-    
-    stats = process_video("temp_video.mp4")
-    insights = generate_insights(stats)
-    
-    st.write("### 📊 Estatísticas de Jogo")
-    st.json(stats)
-    
-    st.write("### 🎯 Sugestões de Melhorias")
-    st.write(insights)
